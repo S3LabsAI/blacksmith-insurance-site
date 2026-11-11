@@ -44,7 +44,7 @@
   --radius: 8px;
 
   /* Sticky header height is derived from these, so anchor jumps can clear it. */
-  --logo-h: 55px;
+  --logo-h: 69px;
   --header-pad: 12px;
   --header-h: calc(var(--logo-h) + 2 * var(--header-pad) + 1px);
 }
@@ -1124,7 +1124,7 @@ address { font-style: normal; }
   .footer-links { gap: 2px; }
   .footer-links a { padding: 10px 0; }
 
-  :root { --logo-h: 52px; --header-pad: 10px; }
+  :root { --logo-h: 65px; --header-pad: 10px; }
   .header-inner { gap: 16px; }
   .header-phone { font-size: 17px; }
   .btn-dark { padding: 10px 16px; font-size: 12px; }
