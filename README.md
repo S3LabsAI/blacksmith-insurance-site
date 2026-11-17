@@ -83,17 +83,17 @@ backend with the full new field list (JotForm's `update_form_backend`). Omitted
 fields are removed from the JotForm form, and the submission key may change, so
 paste the new key into the submit script.
 
-### Still to do: JotForm → AgencyZoom
+### JotForm → AgencyZoom
 
-Needs an AgencyZoom login with permission to create leads (waiting on Chris).
+AgencyZoom's JotForm web-lead integration gives the agency an inbound address,
+`csmith58_jotform@myagency.email`. The JotForm form has a notification email
+to that address on every submission, with all questions and answers, and
+AgencyZoom turns each email into a lead. Lead source, pipeline and assignee
+are set on the integration in AgencyZoom, not here.
 
-1. Create a "Website" lead source in AgencyZoom (Settings → Lead Sources).
-2. In the JotForm form → Settings → Integrations, add AgencyZoom and authorize it.
-3. Map `first_name`, `last_name`, `email` & `phone` to the lead's fields, and
-   `coverage`, `details` & `consent` into the notes. Assign to Chris, lead
-   source "Website".
-4. Submit a test lead on the live site. Confirm it appears in JotForm submissions
-   and in AgencyZoom, then delete it in both.
+Keep the JotForm question labels (First name, Last name, Email, Phone, …)
+stable: AgencyZoom reads the notification email, so renaming a label can
+break its field matching.
 
 `api/quote.js` (the earlier direct AgencyZoom API function) is no longer called
 by the page. Delete it and `scripts/agencyzoom-ids.js` once the JotForm path is
