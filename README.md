@@ -86,14 +86,29 @@ paste the new key into the submit script.
 ### JotForm → AgencyZoom
 
 AgencyZoom's JotForm web-lead integration gives the agency an inbound address,
-`csmith58_jotform@myagency.email`. The JotForm form has a notification email
-to that address on every submission, with all questions and answers, and
-AgencyZoom turns each email into a lead. Lead source, pipeline and assignee
-are set on the integration in AgencyZoom, not here.
+`csmith58_jotform@myagency.email`. The JotForm form has one email rule,
+**"Form Backend Owner Notification"**, whose recipient is that address. It
+sends every answer on each submission, and AgencyZoom turns each email into a
+lead. Lead source, pipeline and assignee are set on the integration in
+AgencyZoom, not here. Verified end to end on 11/17/2026.
 
-Keep the JotForm question labels (First name, Last name, Email, Phone, …)
-stable: AgencyZoom reads the notification email, so renaming a label can
-break its field matching.
+Gotchas (all hit while setting this up):
+
+- **Only the form backend's own email rule fires for website submissions.**
+  Notification emails added any other way (JotForm's AI editor, or "Add Email"
+  in the builder) are stored but never sent for submissions that arrive through
+  the form-backend endpoint. Keep the existing rule and edit its recipient;
+  don't replace it with a new one.
+- **Re-running the backend's email setup (`configure_response_emails`) can reset
+  the recipient** to the JotForm account owner. If it's ever re-run, set the
+  recipient back to the AgencyZoom address in Settings → Emails.
+- **Free JotForm plan = one recipient per email.** Nobody else gets a copy of
+  each lead unless the plan is upgraded.
+- JotForm's account activity log (My Account → History) lists manual forwards
+  but not these automatic notifications, so check AgencyZoom to confirm
+  delivery.
+- Keep question labels (First name, Last name, Email, Phone, …) stable:
+  AgencyZoom reads the email.
 
 `api/quote.js` (the earlier direct AgencyZoom API function) is no longer called
 by the page. Delete it and `scripts/agencyzoom-ids.js` once the JotForm path is
