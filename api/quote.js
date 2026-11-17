@@ -117,6 +117,7 @@ module.exports = async (req, res) => {
   const phone = clean(data.phone, 40);
   const coverage = clean(data.coverage, 80);
   const details = clean(data.details, 2000);
+  const consent = clean(data.consent, 5) === 'yes';
 
   if (!name) return res.status(400).json({ ok: false, error: 'Please enter your name.' });
   if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ ok: false, error: 'Please enter a valid email address.' });
@@ -142,7 +143,8 @@ module.exports = async (req, res) => {
     stageId: Number(process.env.AGENCYZOOM_STAGE_ID),
     leadSourceId: Number(process.env.AGENCYZOOM_LEAD_SOURCE_ID),
     assignTo: Number(process.env.AGENCYZOOM_ASSIGN_TO),
-    notes: `Website quote request\nCoverage: ${coverage}` + (details ? `\nDetails: ${details}` : ''),
+    notes: `Website quote request\nCoverage: ${coverage}` + (details ? `\nDetails: ${details}` : '') +
+      `\nEmail marketing consent: ${consent ? `Yes (checked on website form, ${new Date().toISOString()})` : 'No'}`,
   };
   if (phone) lead.phone = phone;
   if (process.env.AGENCYZOOM_TAGS) lead.tagNames = process.env.AGENCYZOOM_TAGS;
