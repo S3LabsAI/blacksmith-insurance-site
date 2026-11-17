@@ -296,20 +296,24 @@
     </div>
 
     <div class="quote-panel">
-      <!-- Submissions go to /api/quote (Vercel function), which creates the
-           lead in AgencyZoom. See README → "Quote form → AgencyZoom". -->
+      <!-- Submissions go straight to a JotForm backing form, which forwards
+           the lead to AgencyZoom. See README → "Quote form → JotForm → AgencyZoom". -->
       <form id="quote-form" class="quote-form" novalidate>
-        <label class="field span-2">
-          <span>Full name *</span>
-          <input type="text" name="name" placeholder="First and last name" autocomplete="name" required>
+        <label class="field">
+          <span>First name *</span>
+          <input type="text" name="first_name" placeholder="First name" autocomplete="given-name" required>
+        </label>
+        <label class="field">
+          <span>Last name *</span>
+          <input type="text" name="last_name" placeholder="Last name" autocomplete="family-name" required>
         </label>
         <label class="field">
           <span>Email *</span>
           <input type="email" name="email" placeholder="you@email.com" autocomplete="email" required>
         </label>
         <label class="field">
-          <span>Phone</span>
-          <input type="tel" name="phone" placeholder="(972) 000-0000" autocomplete="tel">
+          <span>Phone *</span>
+          <input type="tel" name="phone" placeholder="(972) 000-0000" autocomplete="tel" required>
         </label>
         <label class="field span-2">
           <span>What do you need covered? *</span>
@@ -344,8 +348,8 @@
           <span>Anything else? (optional)</span>
           <textarea name="details" rows="4" placeholder="Vehicles, properties, employees, renewal dates…"></textarea>
         </label>
-        <!-- Honeypot: invisible to people; the server drops any submission
-             that fills it. -->
+        <!-- Honeypot: invisible to people; the submit script drops any
+             submission that fills it. Not sent to JotForm. -->
         <label class="field-hp" aria-hidden="true">
           <span>Leave this field empty</span>
           <input type="text" name="website" tabindex="-1" autocomplete="off">
@@ -432,54 +436,75 @@
 </script>
 
 <script>
-// Submits the quote form to /api/quote, which creates the lead in AgencyZoom.
+// Submits the quote form straight to its JotForm backing form (form
+// 263206076259055), which stores the submission and forwards it to
+// AgencyZoom. The submission key is a public, form-scoped write key meant to
+// live in page code; it is not a JotForm API key.
 // Any failure falls back to the phone number rather than a dead end.
 (function () {
   var form = document.getElementById('quote-form');
   var notice = document.getElementById('form-notice');
   if (!form || !notice) return;
   var button = form.querySelector('.btn-submit');
+  var phoneInput = form.elements.phone;
+
+  var SUBMIT_URL = 'https://api.jotform.com/form-backend/submit';
+  var SUBMISSION_KEY = 'fb1.eyJ2ZXJzaW9uIjoxLCJmb3JtX2lkIjoiMjYzMjA2MDc2MjU5MDU1IiwidXNlcm5hbWUiOiJQYW5vc19Ub21fdG9tIiwid2Vic2l0ZV9pZCI6ImJsYWNrc21pdGgtcXVvdGUtZm9ybSIsImZpZWxkcyI6W3sibmFtZSI6ImZpcnN0X25hbWUiLCJxaWQiOiIyIiwidHlwZSI6InRleHQiLCJyZXF1aXJlZCI6dHJ1ZX0seyJuYW1lIjoibGFzdF9uYW1lIiwicWlkIjoiMyIsInR5cGUiOiJ0ZXh0IiwicmVxdWlyZWQiOnRydWV9LHsibmFtZSI6ImVtYWlsIiwicWlkIjoiNCIsInR5cGUiOiJlbWFpbCIsInJlcXVpcmVkIjp0cnVlfSx7Im5hbWUiOiJwaG9uZSIsInFpZCI6IjUiLCJ0eXBlIjoidGV4dCIsInJlcXVpcmVkIjp0cnVlfSx7Im5hbWUiOiJjb3ZlcmFnZSIsInFpZCI6IjYiLCJ0eXBlIjoic2VsZWN0IiwicmVxdWlyZWQiOnRydWV9LHsibmFtZSI6ImRldGFpbHMiLCJxaWQiOiI3IiwidHlwZSI6InRleHRhcmVhIiwicmVxdWlyZWQiOmZhbHNlfSx7Im5hbWUiOiJjb25zZW50IiwicWlkIjoiOCIsInR5cGUiOiJyYWRpbyIsInJlcXVpcmVkIjp0cnVlfV19.79bf55ee925b9b8256ea3ae97d9ce104498cd7664a3072e9acf80fbd6a1ac6ea';
+  // Field names must match the JotForm backend's field_mapping exactly.
+  var FIELDS = ['first_name', 'last_name', 'email', 'phone', 'coverage', 'details'];
+
+  var THANKS = 'Thanks, your request is in. We’ll be in touch shortly to talk through your options.';
   var FALLBACK = 'Something went wrong sending your request. Please call (972) 624-0239 and we’ll take care of you.';
-  var NOT_CONFIGURED = 'Online quote requests are coming soon. For now, please call (972) 624-0239 and we’ll take care of you.';
+
+  // US numbers only: 10 digits, or 11 with a leading 1.
+  function validPhone(value) {
+    var digits = value.replace(/\D/g, '');
+    return digits.length === 10 || (digits.length === 11 && digits.charAt(0) === '1');
+  }
+  phoneInput.addEventListener('input', function () { phoneInput.setCustomValidity(''); });
+
+  function finish(message, ok) {
+    if (ok) form.reset();
+    notice.textContent = message;
+    notice.hidden = false;
+    button.disabled = false;
+    button.textContent = 'Request My Quote';
+  }
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
+    phoneInput.setCustomValidity(
+      phoneInput.value.trim() && !validPhone(phoneInput.value)
+        ? 'Please enter a 10-digit phone number.' : ''
+    );
     if (!form.reportValidity()) return;
 
-    var payload = {};
-    new FormData(form).forEach(function (value, key) { payload[key] = value; });
-    // Unchecked boxes are left out of FormData; send an explicit "no".
-    payload.consent = form.elements.consent.checked ? 'yes' : 'no';
+    // Honeypot: people never see the "website" field, so a filled value is a
+    // bot. Show the normal thank-you and send nothing.
+    if (form.elements.website.value) { finish(THANKS, true); return; }
+
+    var data = {};
+    FIELDS.forEach(function (name) { data[name] = form.elements[name].value.trim(); });
+    // Unchecked boxes are left out of the form data; send an explicit "no".
+    data.consent = form.elements.consent.checked ? 'yes' : 'no';
 
     button.disabled = true;
     button.textContent = 'Sending…';
     notice.hidden = true;
 
-    // Only messages the server chose for the visitor are shown; network and
-    // parse errors (whose text is browser jargon) fall back to the phone number.
-    fetch('/api/quote', {
+    // Success is responseCode 200 with content.success true. Anything else,
+    // including network errors, gets the phone number, never a fake success.
+    fetch(SUBMIT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({ submission_key: SUBMISSION_KEY, data: data })
     })
       .then(function (res) {
         return res.json().catch(function () { return {}; }).then(function (body) {
-          if (res.ok && body.ok) return null;
-          if (body.code === 'not_configured') return NOT_CONFIGURED;
-          return res.status === 400 && body.error ? body.error : FALLBACK;
+          return res.ok && body.responseCode === 200 && body.content && body.content.success === true;
         });
-      }, function () { return FALLBACK; })
-      .then(function (problem) {
-        if (!problem) {
-          form.reset();
-          notice.textContent = 'Thanks, your request is in. We’ll be in touch shortly to talk through your options.';
-        } else {
-          notice.textContent = problem;
-        }
-        notice.hidden = false;
-        button.disabled = false;
-        button.textContent = 'Request My Quote';
-      });
+      }, function () { return false; })
+      .then(function (ok) { finish(ok ? THANKS : FALLBACK, ok); });
   });
 })();
 </script>
