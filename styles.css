@@ -751,7 +751,8 @@ address { font-style: normal; }
   padding-bottom: 48px;
   border-bottom: 1px solid var(--line-dk-3);
 }
-.footer-logo { height: 104px; width: auto; display: block; margin: 0 0 22px -4px; }
+.footer-brand { display: block; width: fit-content; margin-bottom: 22px; }
+.footer-logo { height: 104px; width: auto; display: block; margin: 0 0 0 -4px; }
 .footer-blurb {
   margin: 0 0 18px;
   font-size: 15px;
