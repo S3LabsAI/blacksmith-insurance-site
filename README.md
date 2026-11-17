@@ -18,8 +18,8 @@ Design source: [Blacksmith Insurance Demo Site](https://claude.ai/design/p/53261
 ```
 index.html      the whole page
 styles.css      all styles (design tokens in :root)
-api/quote.js    Vercel function: quote form → AgencyZoom lead
-scripts/        agencyzoom-ids.js — one-time id lookup for the env vars
+api/quote.js    retired: old quote form → AgencyZoom API function (unused)
+scripts/        agencyzoom-ids.js — id lookup for the retired function
 vercel.json     cache + security headers
 robots.txt      / sitemap.xml
 assets/         optimized art (logos, headshot, favicon, OG image)
@@ -43,59 +43,61 @@ its own: it renders through a client-side runtime that expects React to be
 injected by the design host. This repo is the compiled, self-contained version —
 same visual output, no runtime.
 
-## Quote form → AgencyZoom
+## Quote form → JotForm → AgencyZoom
 
-The quote form posts to `/api/quote`, a Vercel serverless function
-(`api/quote.js`, zero dependencies) that creates a lead in AgencyZoom via
-their official API (`POST /v1/api/leads/create`; spec at
-`https://app.agencyzoom.com/openapi/agencyzoom.yaml`). Credentials live in
-Vercel environment variables, never in the browser. A honeypot field
-(`website`) silently drops bot submissions; real failures show the office
-phone number instead of a fake success.
+The quote form keeps the site's own design and posts straight from the browser
+to a **JotForm form backend**. JotForm stores each submission and forwards it to
+AgencyZoom through the JotForm → AgencyZoom integration on the backing form.
+There is no server code in this path.
 
-Until the env vars below are set, the function returns "The form is not
-configured yet" and the visitor is pointed at the phone number — the site
-never pretends to send.
+| | |
+| --- | --- |
+| JotForm form | `263206076259055`, "BlackSmith Agency – Website Quote Request" (Tom's JotForm account) |
+| Website id | `blacksmith-quote-form` |
+| Submit URL | `https://api.jotform.com/form-backend/submit` |
+| Submission key | in the submit script at the bottom of `index.html` |
 
-### Setup (one time)
+The submission key is a public, form-scoped write key meant to sit in page code.
+It can only add submissions to this one form; it can't read them and it isn't a
+JotForm API key.
 
-1. **Credentials.** The API logs in like a user (`/v1/api/auth/login`) and the
-   lead is created with that user's permissions. Use the agency owner's
-   AgencyZoom login — or better, a dedicated "API/Website" user so the
-   password can be rotated without touching the owner's. There is no scoped
-   API token for this; the Zapier key/secret pair in-app is for Zapier only.
+Field mapping (the HTML `name`s must match exactly):
 
-2. **Look up ids.** The create-lead call needs a pipeline, stage, lead source,
-   and producer. List yours (read-only):
+| HTML name | JotForm qid | Required |
+| --- | --- | --- |
+| `first_name` | 2 | yes |
+| `last_name` | 3 | yes |
+| `email` | 4 | yes |
+| `phone` | 5 | yes (10-digit US check in the browser) |
+| `coverage` | 6 | yes |
+| `details` | 7 | no |
+| `consent` | 8 | always sent, `yes` or `no` |
 
-   ```bash
-   AGENCYZOOM_USERNAME=owner@agency.com AGENCYZOOM_PASSWORD='…' node scripts/agencyzoom-ids.js
-   ```
+The `website` honeypot is checked in the browser and never sent: a filled value
+shows the normal thank-you and nothing is submitted. Any failure (network, a
+JotForm error, anything other than `responseCode` 200 with `content.success`
+true) shows the office phone number instead of a fake success.
 
-   Tip: create a "Website" lead source in AgencyZoom first (Settings → Lead
-   Sources) so form leads are traceable in reports.
+**Changing fields:** add or rename the input in `index.html`, then update the
+backend with the full new field list (JotForm's `update_form_backend`). Omitted
+fields are removed from the JotForm form, and the submission key may change, so
+paste the new key into the submit script.
 
-3. **Set env vars** in Vercel → Project → Settings → Environment Variables
-   (Production, and Preview if previews should create real leads):
+### Still to do: JotForm → AgencyZoom
 
-   | Variable | Value |
-   | --- | --- |
-   | `AGENCYZOOM_USERNAME` | login email from step 1 |
-   | `AGENCYZOOM_PASSWORD` | its password |
-   | `AGENCYZOOM_PIPELINE_ID` | from step 2 |
-   | `AGENCYZOOM_STAGE_ID` | from step 2 (stage inside that pipeline) |
-   | `AGENCYZOOM_LEAD_SOURCE_ID` | from step 2 |
-   | `AGENCYZOOM_ASSIGN_TO` | employee id of the producer |
-   | `AGENCYZOOM_TAGS` | optional, e.g. `website;quote-form` |
-   | `AGENCYZOOM_COUNTRY` | optional, defaults to `USA` |
+Needs an AgencyZoom login with permission to create leads (waiting on Chris).
 
-4. **Redeploy**, submit the form on the live site, and confirm the lead lands
-   in AgencyZoom with the right pipeline/stage/source/assignee.
+1. Create a "Website" lead source in AgencyZoom (Settings → Lead Sources).
+2. In the JotForm form → Settings → Integrations, add AgencyZoom and authorize it.
+3. Map `first_name`, `last_name`, `email` & `phone` to the lead's fields, and
+   `coverage`, `details` & `consent` into the notes. Assign to Chris, lead
+   source "Website".
+4. Submit a test lead on the live site. Confirm it appears in JotForm submissions
+   and in AgencyZoom, then delete it in both.
 
-What gets sent: name (split into first/last), email, phone, and a note with
-the selected coverage line and the free-text details. AgencyZoom's API is
-rate-limited (120 calls/min as of Aug 2026); the function caches its login
-token across warm invocations to stay well under it.
+`api/quote.js` (the earlier direct AgencyZoom API function) is no longer called
+by the page. Delete it and `scripts/agencyzoom-ids.js` once the JotForm path is
+verified end to end.
 
 ## Known gaps
 
