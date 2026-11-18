@@ -17,3 +17,6 @@ owner-headshot.png
 *.swp
 node_modules/
 README.md
+
+# Client-facing docs, not part of the site
+client-guide/
