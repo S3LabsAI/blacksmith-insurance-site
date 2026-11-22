@@ -16,10 +16,10 @@ Design source: [Blacksmith Insurance Demo Site](https://claude.ai/design/p/53261
 ## Layout
 
 ```
-index.html      the whole page
+index.html      the home page
+team.html       Our Team page
+privacy.html    privacy policy
 styles.css      all styles (design tokens in :root)
-api/quote.js    retired: old quote form → AgencyZoom API function (unused)
-scripts/        agencyzoom-ids.js — id lookup for the retired function
 vercel.json     cache + security headers
 robots.txt      / sitemap.xml
 assets/         optimized art (logos, headshot, favicon, OG image)
@@ -110,9 +110,9 @@ Gotchas (all hit while setting this up):
 - Keep question labels (First name, Last name, Email, Phone, …) stable:
   AgencyZoom reads the email.
 
-`api/quote.js` (the earlier direct AgencyZoom API function) is no longer called
-by the page. Delete it and `scripts/agencyzoom-ids.js` once the JotForm path is
-verified end to end.
+An earlier version posted the form to a Vercel function that called the
+AgencyZoom API directly. It was removed once the JotForm path was verified, so
+the site has no server-side code and needs no AgencyZoom credentials.
 
 ## Known gaps
 
