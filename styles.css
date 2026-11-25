@@ -1395,6 +1395,8 @@ address { font-style: normal; }
   flex: none;
 }
 .byline-name { font-size: 15px; font-weight: 500; }
+/* Keep the title on one line when a narrow card wraps the byline. */
+.byline-title { white-space: nowrap; }
 .byline-role {
   font-size: 11px;
   letter-spacing: 0.16em;
